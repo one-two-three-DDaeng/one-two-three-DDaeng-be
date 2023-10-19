@@ -28,7 +28,7 @@ class MovieCount(Resource):
         linetotal = int(total.loc[0][0])
 
         context = {'count':linetotal}
-        context = json.dumps(context, ensure_ascii=False).replace('\"',"")
+        # context = json.dumps(context, ensure_ascii=False)
     
         return context
 
@@ -48,7 +48,7 @@ class MovieContent(Resource):
         else:
             context = dict(lineinfo.loc[0])
             context['line_seq'] = str(context['line_seq'])
-            context = json.dumps(context, ensure_ascii=False).replace('\"',"")
+            # context = json.dumps(context, ensure_ascii=False).replace('\"',"")
             
         return context
 
