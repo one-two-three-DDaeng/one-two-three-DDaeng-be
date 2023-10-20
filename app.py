@@ -95,10 +95,10 @@ class MovieLineCURD(Resource):
         # 같은 이름의 영화제목이 있을 경우 -> 유사도 검사
         if not namelist.empty:
             linelist = list(namelist[['line']].iloc[:,0])
-            print(linelist)
+
             for li in linelist:
                 similar_score = similar(line,li)
-                print(line, similar_score)
+
                 if similar_score >= similar_std:
                     response = [{'result':False, 'reason':f'similar line exist {similar_score}'}]
                     return response
