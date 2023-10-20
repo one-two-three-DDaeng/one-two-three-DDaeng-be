@@ -59,15 +59,17 @@ class MoviePost(Resource):
         querytext = text("select line_seq from movie_line_mng order by line_seq desc limit 1;") #
         lastnum = int(pd.read_sql_query(querytext, engine).loc[0][0])
         line_seq = str(lastnum+1)
-        session.commit()
 
         #중복 체크
         similar_score = 0.0
         similar_std = 0.5
-        querytext = text("select movie_name,line from movie_line_mng;") #
+        search_word = [movie_name[0] +"%", "%"+movie_name[-1]]
+        querytext = text(f"""select movie_name,line from movie_line_mng 
+                         where movie_name like '{search_word[0]}' or movie_name like '{search_word[1]}';""") #
         movieinfo = pd.read_sql_query(querytext, engine)
 
-        namelist = movieinfo[movieinfo['movie_name'] == movie_name]
+        namelist = movieinfo
+        session.commit()
 
         # 같은 이름의 영화제목이 있을 경우 -> 유사도 검사
         if not namelist.empty:
