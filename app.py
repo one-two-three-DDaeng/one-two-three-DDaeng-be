@@ -7,16 +7,15 @@ from flask_restx import Api, Resource, fields
 from difflib import SequenceMatcher
 import json
 
-#문장 유사도 확인
+#문장 유사도 확인 함수
 def similar(a, b):
     return round(SequenceMatcher(None, a, b).ratio(),3)
+
 
 app = Flask(__name__)
 
 api = Api(app, version='1.0', title='API 문서', description='DDAENG_API 문서', doc="/")
-
 api = api.namespace('api',description='Movie API')
-# api_line = api.namespace('movie',description='line_content API')
 
 movie_model = api.model('movie_model', {
     'movie_name':fields.String(description="영화 제목", requested=True),
@@ -31,44 +30,22 @@ class MovieCount(Resource):
         engine,session = dbSqlAlchemy.get_engine()
         querytext = text("select count(*) from movie_line_mng;") #
         total = pd.read_sql_query(querytext, engine)
+
+        querytext = text("select line_seq from movie_line_mng order by line_seq desc limit 1;") #
+        db_seq = int(pd.read_sql_query(querytext, engine).loc[0][0])
+
         session.commit()
 
         linetotal = int(total.loc[0][0])
 
-        context = {'count':linetotal}
+        context = {'count':linetotal,'last_seq':db_seq}
         response.append(context)
         # context = json.dumps(context, ensure_ascii=False)
     
         return response
 
-
-@api.route('/movie/line/<int:num>')
-class MovieContent(Resource):
-    def get(self, num):
-        response = []
-        res = str(num)
-
-        engine,session = dbSqlAlchemy.get_engine()
-        querytext = text(f"select * from movie_line_mng where line_seq = {res} and use_yn = 'y'") #
-        lineinfo = pd.read_sql_query(querytext, engine)
-        session.commit()
-
-        if lineinfo.empty:
-            return response
-        else:
-            context = dict(lineinfo.loc[0])
-            context['line_seq'] = int(context['line_seq'])
-            context['line'] = context['line'].replace(' ','√')
-            del context['use_yn']
-
-            response.append(context)
-            # context = json.dumps(context, ensure_ascii=False).replace('\"',"")
-            
-        return response
-
-@api.route('/movie/line/insert')
-class MovieLineCURD(Resource):
-
+@api.route('/movie/line')
+class MoviePost(Resource):
     @api.expect(movie_model)
     def post(self):
         response = []
@@ -100,7 +77,7 @@ class MovieLineCURD(Resource):
                 similar_score = similar(line,li)
 
                 if similar_score >= similar_std:
-                    response = [{'result':False, 'reason':f'similar line exist {similar_score}'}]
+                    response = [{'result':False, 'err_reason':f'similar line exist {similar_score}'}]
                     return response
 
         # 새로운 영화제목 또는 유사도가 유사도 기준 이하일 경우 DB저장
@@ -114,9 +91,64 @@ class MovieLineCURD(Resource):
                 response = [{'result':True}]
 
             except:
-                response = [{'result':False, 'reason':'server err'}]
+                response = [{'result':False, 'err_reason':'server err'}]
 
             return response
+
+@api.route('/movie/line/<int:num>')
+class MovieSimple(Resource):
+    def get(self, num):
+        response = []
+        line_seq = str(num)
+
+        engine,session = dbSqlAlchemy.get_engine()
+        querytext = text(f"select * from movie_line_mng where line_seq = {line_seq} and use_yn = 'y'") #
+        lineinfo = pd.read_sql_query(querytext, engine)
+        session.commit()
+
+        if lineinfo.empty:
+            return response
+        else:
+            context = dict(lineinfo.loc[0])
+            context['line_seq'] = int(context['line_seq'])
+            context['line'] = context['line'].replace(' ','√')
+            del context['use_yn']
+
+            response.append(context)
+            # context = json.dumps(context, ensure_ascii=False).replace('\"',"")
+            
+        return response
+
+    def delete(self, num):
+        response = []
+        line_seq = str(num)
+        
+        try:
+            engine,session = dbSqlAlchemy.get_engine()
+            conn = engine.raw_connection()
+            cursor = conn.cursor()
+
+            querytext = text("select line_seq from movie_line_mng order by line_seq desc limit 1;") #
+            db_seq = int(pd.read_sql_query(querytext, engine).loc[0][0])
+
+            if int(line_seq) == int(db_seq):
+                query = f"""delete from movie_line_mng where line_seq = {line_seq};"""
+                cursor.execute(query)
+                
+                session.commit()
+                conn.commit()
+
+                response = [{'result':True}]
+
+            else:
+                response = [{'result':False,'err_reason':'it is not last num of DB. this api can delete only last data'}]
+        except:
+            response = [{'result':False, 'err_reason':'server err'}]
+
+
+        return response
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
