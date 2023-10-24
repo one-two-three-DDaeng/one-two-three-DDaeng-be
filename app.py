@@ -38,11 +38,10 @@ class MovieCount(Resource):
 
         linetotal = int(total.loc[0][0])
 
-        context = {'count':linetotal,'last_seq':db_seq}
-        response.append(context)
-        # context = json.dumps(context, ensure_ascii=False)
+        response = [{'count':linetotal,'last_seq':db_seq}]
+        context = {'data':response}
     
-        return response
+        return context
 
 @api.route('/movie/line')
 class MoviePost(Resource):
@@ -80,7 +79,8 @@ class MoviePost(Resource):
 
                 if similar_score >= similar_std:
                     response = [{'result':False, 'err_reason':f'similar line exist {similar_score}'}]
-                    return response
+                    context = {'data':response}
+                    return context
 
         # 새로운 영화제목 또는 유사도가 유사도 기준 이하일 경우 DB저장
         if namelist.empty or similar_score < similar_std:
@@ -95,7 +95,8 @@ class MoviePost(Resource):
             except:
                 response = [{'result':False, 'err_reason':'server err'}]
 
-            return response
+            context = {'data':response}
+            return context
 
 @api.route('/movie/line/<int:num>')
 class MovieSimple(Resource):
@@ -109,7 +110,9 @@ class MovieSimple(Resource):
         session.commit()
 
         if lineinfo.empty:
-            return response
+            context = {'data':response}
+            return context
+        
         else:
             context = dict(lineinfo.loc[0])
             context['line_seq'] = int(context['line_seq'])
@@ -119,7 +122,8 @@ class MovieSimple(Resource):
             response.append(context)
             # context = json.dumps(context, ensure_ascii=False).replace('\"',"")
             
-        return response
+        context = {'data':response}
+        return context
 
     def delete(self, num):
         response = []
@@ -148,7 +152,8 @@ class MovieSimple(Resource):
             response = [{'result':False, 'err_reason':'server err'}]
 
 
-        return response
+        context = {'data':response}
+        return context
 
 
 
