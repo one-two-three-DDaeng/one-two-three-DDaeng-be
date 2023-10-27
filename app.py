@@ -6,6 +6,7 @@ import pandas as pd
 from flask_restx import Api, Resource, fields
 from difflib import SequenceMatcher
 import json
+import re
 
 #문장 유사도 확인 함수
 def similar(a, b):
@@ -49,7 +50,21 @@ class MoviePost(Resource):
     def post(self):
         response = []
         movie_name = str(request.json.get('movie_name'))
-        line = str(request.json.get('line'))
+        txt = str(request.json.get('line'))
+
+        #line 전처리 : 앞 뒤 띄어쓰기 제거
+        line = txt.strip()
+
+        #line 전처리 : 특수 문자 처리
+        repeat_re = re.compile('[\,|\.|?|!^\s]{2,}')
+        remove_re = re.compile('[-=+#/:^@*\"※~ㆍ』‘|\(\)\[\]`\'…》\”\“\’·]')
+        
+        line = re.sub(remove_re,'',line)
+
+        repeat_txt = repeat_re.findall(line)
+        if repeat_txt != []:
+            for k in repeat_txt:
+                line = line.replace(k,k[0])
 
         engine,session = dbSqlAlchemy.get_engine()
         conn = engine.raw_connection()
